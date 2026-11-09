@@ -1,0 +1,419 @@
+package org.gadka.aac.ui
+
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
+import android.speech.tts.TextToSpeech
+import android.widget.Toast
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import org.gadka.aac.data.Category
+import org.gadka.aac.data.Pictogram
+import org.gadka.aac.tts.TtsStatus
+import org.gadka.aac.ui.theme.TileText
+
+@Composable
+fun BoardScreen(vm: MainViewModel) {
+    val categories by vm.categories.collectAsStateWithLifecycle()
+    val selectedId by vm.selectedCategoryId.collectAsStateWithLifecycle()
+    val pictograms by vm.pictograms.collectAsStateWithLifecycle()
+    val sentence by vm.sentence.collectAsStateWithLifecycle()
+    val editMode by vm.editMode.collectAsStateWithLifecycle()
+    val settings by vm.settings.collectAsStateWithLifecycle()
+    val ttsStatus by vm.ttsStatus.collectAsStateWithLifecycle()
+
+    var editingPictogram by remember { mutableStateOf<Pictogram?>(null) }
+    var editingCategory by remember { mutableStateOf<Category?>(null) }
+    var showSettings by remember { mutableStateOf(false) }
+
+    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Column(
+            Modifier.fillMaxSize().padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            SentenceBar(
+                sentence = sentence,
+                editMode = editMode,
+                onSpeak = vm::speakSentence,
+                onBackspace = vm::backspace,
+                onClear = vm::clearSentence,
+                onToggleEdit = { vm.setEditMode(!editMode) },
+                onSettings = { showSettings = true },
+            )
+
+            if (ttsStatus == TtsStatus.MISSING_LANGUAGE || ttsStatus == TtsStatus.ERROR) {
+                TtsBanner(ttsStatus, onRecheck = vm::recheckVoice)
+            }
+
+            Row(
+                Modifier.weight(1f).fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                CategoryRail(
+                    categories = categories,
+                    selectedId = selectedId,
+                    editMode = editMode,
+                    onSelect = vm::selectCategory,
+                    onEdit = { editingCategory = it },
+                    onAdd = { editingCategory = Category(name = "", emoji = "⭐") },
+                    modifier = Modifier.width(220.dp).fillMaxHeight(),
+                )
+                PictogramGrid(
+                    pictograms = pictograms,
+                    columns = settings.columns,
+                    editMode = editMode,
+                    onTap = { p -> if (editMode) editingPictogram = p else vm.onPictogramTap(p) },
+                    onAdd = {
+                        selectedId?.let { editingPictogram = Pictogram(categoryId = it, label = "") }
+                    },
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                )
+            }
+        }
+    }
+
+    editingPictogram?.let { p ->
+        PictogramEditDialog(
+            initial = p,
+            categories = categories,
+            onDismiss = { editingPictogram = null },
+            onSave = { vm.savePictogram(it); editingPictogram = null },
+            onDelete = if (p.id != 0L) {
+                { vm.deletePictogram(p); editingPictogram = null }
+            } else null,
+        )
+    }
+    editingCategory?.let { c ->
+        CategoryEditDialog(
+            initial = c,
+            onDismiss = { editingCategory = null },
+            onSave = { vm.saveCategory(it); editingCategory = null },
+            onDelete = if (c.id != 0L) {
+                { vm.deleteCategory(c); editingCategory = null }
+            } else null,
+        )
+    }
+    if (showSettings) {
+        SettingsDialog(
+            initial = settings,
+            onDismiss = { showSettings = false },
+            onSave = { vm.updateSettings(it); showSettings = false },
+        )
+    }
+}
+
+@Composable
+private fun SentenceBar(
+    sentence: List<Pictogram>,
+    editMode: Boolean,
+    onSpeak: () -> Unit,
+    onBackspace: () -> Unit,
+    onClear: () -> Unit,
+    onToggleEdit: () -> Unit,
+    onSettings: () -> Unit,
+) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = Color.White,
+        shadowElevation = 2.dp,
+        modifier = Modifier.fillMaxWidth().height(140.dp),
+    ) {
+        Row(
+            Modifier.padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            val listState = rememberLazyListState()
+            LaunchedEffect(sentence.size) {
+                if (sentence.isNotEmpty()) listState.animateScrollToItem(sentence.lastIndex)
+            }
+            // Dotknięcie paska zdania = przeczytaj całe zdanie (typowe w AAC).
+            Box(
+                Modifier.weight(1f).fillMaxHeight().clickable(onClick = onSpeak),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                if (sentence.isEmpty()) {
+                    Text(
+                        "Dotknij piktogramu, aby ułożyć zdanie",
+                        color = TileText.copy(alpha = 0.45f),
+                        fontSize = 22.sp,
+                        modifier = Modifier.padding(start = 12.dp),
+                    )
+                } else {
+                    LazyRow(
+                        state = listState,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.fillMaxSize(),
+                    ) {
+                        itemsIndexed(sentence) { _, p ->
+                            PictogramTile(
+                                p = p,
+                                onClick = onSpeak,
+                                modifier = Modifier.fillMaxHeight().aspectRatio(1f),
+                            )
+                        }
+                    }
+                }
+            }
+            BarButton("🔊", "Mów", onSpeak, highlighted = true)
+            BarButton("⌫", "Cofnij", onBackspace)
+            BarButton("✖", "Wyczyść", onClear)
+            if (editMode) {
+                RoundIconButton(onClick = onSettings) {
+                    Icon(Icons.Default.Settings, contentDescription = "Ustawienia")
+                }
+            }
+            LockButton(editMode = editMode, onToggle = onToggleEdit)
+        }
+    }
+}
+
+@Composable
+private fun BarButton(glyph: String, label: String, onClick: () -> Unit, highlighted: Boolean = false) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        color = if (highlighted) MaterialTheme.colorScheme.primary else Color(0xFFEDEFF4),
+        contentColor = if (highlighted) Color.White else TileText,
+        modifier = Modifier.width(if (highlighted) 120.dp else 96.dp).fillMaxHeight(),
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(glyph, fontSize = 40.sp)
+            Text(label, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
+private fun RoundIconButton(onClick: () -> Unit, content: @Composable () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = CircleShape,
+        color = Color(0xFFEDEFF4),
+        modifier = Modifier.size(64.dp),
+    ) {
+        Box(contentAlignment = Alignment.Center) { content() }
+    }
+}
+
+/**
+ * Blokada edycji: wejście w tryb edycji wymaga przytrzymania,
+ * żeby dziecko nie zmieniało tablic przypadkiem.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun LockButton(editMode: Boolean, onToggle: () -> Unit) {
+    val context = LocalContext.current
+    Box(
+        Modifier
+            .size(64.dp)
+            .clip(CircleShape)
+            .background(if (editMode) MaterialTheme.colorScheme.primary else Color(0xFFEDEFF4))
+            .combinedClickable(
+                onClick = {
+                    if (editMode) onToggle()
+                    else Toast.makeText(context, "Przytrzymaj, aby edytować", Toast.LENGTH_SHORT).show()
+                },
+                onLongClick = { if (!editMode) onToggle() },
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            if (editMode) Icons.Default.Check else Icons.Default.Lock,
+            contentDescription = if (editMode) "Zakończ edycję" else "Edycja (przytrzymaj)",
+            tint = if (editMode) Color.White else TileText,
+        )
+    }
+}
+
+@Composable
+private fun TtsBanner(status: TtsStatus, onRecheck: () -> Unit) {
+    val context = LocalContext.current
+    Surface(
+        color = Color(0xFFFFF3CD),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                if (status == TtsStatus.ERROR)
+                    "Nie udało się uruchomić syntezatora mowy. Sprawdź ustawienia zamiany tekstu na mowę."
+                else
+                    "Brak polskiego głosu. Zainstaluj go, aby aplikacja mogła mówić bez internetu.",
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = { openTtsInstall(context) }) { Text("Zainstaluj głos") }
+            TextButton(onClick = onRecheck) { Text("Sprawdź ponownie") }
+        }
+    }
+}
+
+private fun openTtsInstall(context: Context) {
+    try {
+        context.startActivity(Intent(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA))
+    } catch (e: ActivityNotFoundException) {
+        try {
+            context.startActivity(Intent("com.android.settings.TTS_SETTINGS"))
+        } catch (e2: ActivityNotFoundException) {
+            Toast.makeText(context, "Otwórz Ustawienia → Zamiana tekstu na mowę", Toast.LENGTH_LONG).show()
+        }
+    }
+}
+
+@Composable
+private fun CategoryRail(
+    categories: List<Category>,
+    selectedId: Long?,
+    editMode: Boolean,
+    onSelect: (Long) -> Unit,
+    onEdit: (Category) -> Unit,
+    onAdd: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    LazyColumn(modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        items(categories, key = { it.id }) { c ->
+            val selected = c.id == selectedId
+            Surface(
+                onClick = { if (editMode && selected) onEdit(c) else onSelect(c.id) },
+                shape = RoundedCornerShape(16.dp),
+                color = if (selected) MaterialTheme.colorScheme.primary else Color.White,
+                contentColor = if (selected) Color.White else TileText,
+                modifier = Modifier.fillMaxWidth().height(72.dp),
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(c.emoji, fontSize = 30.sp)
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        c.name,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (editMode && selected) {
+                        Icon(Icons.Default.Edit, contentDescription = "Edytuj kategorię")
+                    }
+                }
+            }
+        }
+        if (editMode) {
+            item(key = "add-category") {
+                OutlinedButton(
+                    onClick = onAdd,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth().height(64.dp),
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Kategoria", fontSize = 18.sp)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun PictogramGrid(
+    pictograms: List<Pictogram>,
+    columns: Int,
+    editMode: Boolean,
+    onTap: (Pictogram) -> Unit,
+    onAdd: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (pictograms.isEmpty() && !editMode) {
+        Box(modifier, contentAlignment = Alignment.Center) {
+            Text(
+                "Ta kategoria jest pusta.\nPrzytrzymaj kłódkę, aby dodać piktogramy.",
+                textAlign = TextAlign.Center,
+                fontSize = 20.sp,
+                color = TileText.copy(alpha = 0.5f),
+            )
+        }
+        return
+    }
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(columns),
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(bottom = 12.dp),
+    ) {
+        items(pictograms, key = { it.id }) { p ->
+            PictogramTile(
+                p = p,
+                onClick = { onTap(p) },
+                modifier = Modifier.aspectRatio(1f),
+                showEditBadge = editMode,
+            )
+        }
+        if (editMode) {
+            item(key = "add-pictogram") {
+                AddTile(onClick = onAdd, modifier = Modifier.aspectRatio(1f))
+            }
+        }
+    }
+}
