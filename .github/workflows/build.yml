@@ -42,6 +42,14 @@ jobs:
       - name: Budowanie
         run: gradle assembleRelease --stacktrace
 
+      - name: Sprawdź, czy biblioteka symboli jest w APK
+        run: |
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          N=$(unzip -l "$APK" | grep -c 'assets/symbols/[mo]/' || true)
+          echo "Symboli w APK: $N"
+          ls -la "$APK"
+          test "$N" -gt 5000
+
       - uses: actions/upload-artifact@v4
         with:
           name: gadka-apk
