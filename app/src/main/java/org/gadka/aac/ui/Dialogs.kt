@@ -21,6 +21,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -30,6 +31,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
@@ -40,6 +42,7 @@ import java.util.Locale
 import kotlin.math.roundToInt
 import org.gadka.aac.model.WordType
 import org.gadka.aac.symbols.ASSET_PREFIX
+import org.gadka.aac.symbols.SymbolLibrary
 
 private val wideDialog = DialogProperties(usePlatformDefaultWidth = false)
 
@@ -74,13 +77,21 @@ fun PictogramEditDialog(
         )
     }
 
+    // Na wąskich ekranach podgląd ląduje nad polami, a całość przewija się w pionie.
+    val narrow = LocalConfiguration.current.screenWidthDp < 600
+
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = wideDialog,
-        modifier = Modifier.fillMaxWidth(0.8f),
+        modifier = Modifier.fillMaxWidth(if (narrow) 0.95f else 0.8f),
         title = { Text(if (initial.id == 0L) "Nowy piktogram" else "Edytuj piktogram") },
         text = {
-            Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
+            FlowRow(
+                modifier = if (narrow) Modifier.verticalScroll(rememberScrollState()) else Modifier,
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                maxItemsInEachRow = if (narrow) 1 else 2,
+            ) {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -103,7 +114,9 @@ fun PictogramEditDialog(
                     }
                 }
                 Column(
-                    Modifier.weight(1f).verticalScroll(rememberScrollState()),
+                    Modifier
+                        .weight(1f)
+                        .then(if (narrow) Modifier else Modifier.verticalScroll(rememberScrollState())),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     OutlinedTextField(
@@ -267,6 +280,7 @@ fun SettingsDialog(
     var rate by remember { mutableFloatStateOf(initial.speechRate) }
     var speakOnTap by remember { mutableStateOf(initial.speakOnTap) }
     var showCredits by remember { mutableStateOf(false) }
+    val symbolCount = SymbolLibrary.symbols.collectAsState().value.size
 
     if (showCredits) CreditsDialog(onDismiss = { showCredits = false })
 
@@ -295,7 +309,7 @@ fun SettingsDialog(
                 }
                 TextButton(onClick = { showCredits = true }) { Text("Licencje i autorzy symboli") }
                 Text(
-                    "Gadka 0.2 · etap 2",
+                    "Gadka 0.2.1 · biblioteka: $symbolCount symboli",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 )

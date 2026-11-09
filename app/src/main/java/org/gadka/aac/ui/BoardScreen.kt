@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -58,6 +59,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -65,6 +67,12 @@ import org.gadka.aac.data.Category
 import org.gadka.aac.data.Pictogram
 import org.gadka.aac.tts.TtsStatus
 import org.gadka.aac.ui.theme.TileText
+
+/** Poniżej tej szerokości (telefony, tablety w pionie) układ jest kompaktowy. */
+private val CompactWidth = 600.dp
+
+/** Najmniejszy sensowny kafelek – mniejszych nie rysujemy, nawet gdy ustawiono dużo kolumn. */
+private val MinTile = 88.dp
 
 @Composable
 fun BoardScreen(vm: MainViewModel) {
@@ -80,48 +88,79 @@ fun BoardScreen(vm: MainViewModel) {
     var editingCategory by remember { mutableStateOf<Category?>(null) }
     var showSettings by remember { mutableStateOf(false) }
 
+    val onCategoryEdit: (Category) -> Unit = { editingCategory = it }
+    val onCategoryAdd: () -> Unit = { editingCategory = Category(name = "", emoji = "⭐") }
+    val onTap: (Pictogram) -> Unit = { p -> if (editMode) editingPictogram = p else vm.onPictogramTap(p) }
+    val onAddPictogram: () -> Unit = {
+        selectedId?.let { editingPictogram = Pictogram(categoryId = it, label = "") }
+    }
+
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(
-            Modifier.fillMaxSize().padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            SentenceBar(
-                sentence = sentence,
-                editMode = editMode,
-                onSpeak = vm::speakSentence,
-                onBackspace = vm::backspace,
-                onClear = vm::clearSentence,
-                onToggleEdit = { vm.setEditMode(!editMode) },
-                onSettings = { showSettings = true },
-            )
-
-            if (ttsStatus == TtsStatus.MISSING_LANGUAGE || ttsStatus == TtsStatus.ERROR) {
-                TtsBanner(ttsStatus, onRecheck = vm::recheckVoice)
-            }
-
-            Row(
-                Modifier.weight(1f).fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val compact = maxWidth < CompactWidth
+            val gap = if (compact) 8.dp else 12.dp
+            Column(
+                Modifier.fillMaxSize().padding(gap),
+                verticalArrangement = Arrangement.spacedBy(gap),
             ) {
-                CategoryRail(
-                    categories = categories,
-                    selectedId = selectedId,
+                SentenceBar(
+                    sentence = sentence,
                     editMode = editMode,
-                    onSelect = vm::selectCategory,
-                    onEdit = { editingCategory = it },
-                    onAdd = { editingCategory = Category(name = "", emoji = "⭐") },
-                    modifier = Modifier.width(220.dp).fillMaxHeight(),
+                    compact = compact,
+                    onSpeak = vm::speakSentence,
+                    onBackspace = vm::backspace,
+                    onClear = vm::clearSentence,
+                    onToggleEdit = { vm.setEditMode(!editMode) },
+                    onSettings = { showSettings = true },
                 )
-                PictogramGrid(
-                    pictograms = pictograms,
-                    columns = settings.columns,
-                    editMode = editMode,
-                    onTap = { p -> if (editMode) editingPictogram = p else vm.onPictogramTap(p) },
-                    onAdd = {
-                        selectedId?.let { editingPictogram = Pictogram(categoryId = it, label = "") }
-                    },
-                    modifier = Modifier.weight(1f).fillMaxHeight(),
-                )
+
+                if (ttsStatus == TtsStatus.MISSING_LANGUAGE || ttsStatus == TtsStatus.ERROR) {
+                    TtsBanner(ttsStatus, onRecheck = vm::recheckVoice)
+                }
+
+                if (compact) {
+                    CategoryStrip(
+                        categories = categories,
+                        selectedId = selectedId,
+                        editMode = editMode,
+                        onSelect = vm::selectCategory,
+                        onEdit = onCategoryEdit,
+                        onAdd = onCategoryAdd,
+                    )
+                    PictogramGrid(
+                        pictograms = pictograms,
+                        columns = settings.columns,
+                        editMode = editMode,
+                        onTap = onTap,
+                        onAdd = onAddPictogram,
+                        modifier = Modifier.weight(1f).fillMaxWidth(),
+                    )
+                } else {
+                    Row(
+                        Modifier.weight(1f).fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(gap),
+                    ) {
+                        CategoryRail(
+                            categories = categories,
+                            selectedId = selectedId,
+                            editMode = editMode,
+                            onSelect = vm::selectCategory,
+                            onEdit = onCategoryEdit,
+                            onAdd = onCategoryAdd,
+                            modifier = Modifier
+                                .width(if (maxWidth < 840.dp) 180.dp else 220.dp)
+                                .fillMaxHeight(),
+                        )
+                        PictogramGrid(
+                            pictograms = pictograms,
+                            columns = settings.columns,
+                            editMode = editMode,
+                            onTap = onTap,
+                            onAdd = onAddPictogram,
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                        )
+                    }
+                }
             }
         }
     }
@@ -160,6 +199,7 @@ fun BoardScreen(vm: MainViewModel) {
 private fun SentenceBar(
     sentence: List<Pictogram>,
     editMode: Boolean,
+    compact: Boolean,
     onSpeak: () -> Unit,
     onBackspace: () -> Unit,
     onClear: () -> Unit,
@@ -170,84 +210,128 @@ private fun SentenceBar(
         shape = RoundedCornerShape(20.dp),
         color = Color.White,
         shadowElevation = 2.dp,
-        modifier = Modifier.fillMaxWidth().height(140.dp),
+        modifier = Modifier.fillMaxWidth(),
     ) {
-        Row(
-            Modifier.padding(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            val listState = rememberLazyListState()
-            LaunchedEffect(sentence.size) {
-                if (sentence.isNotEmpty()) listState.animateScrollToItem(sentence.lastIndex)
-            }
-            // Dotknięcie paska zdania = przeczytaj całe zdanie (typowe w AAC).
-            Box(
-                Modifier.weight(1f).fillMaxHeight().clickable(onClick = onSpeak),
-                contentAlignment = Alignment.CenterStart,
-            ) {
-                if (sentence.isEmpty()) {
-                    Text(
-                        "Dotknij piktogramu, aby ułożyć zdanie",
-                        color = TileText.copy(alpha = 0.45f),
-                        fontSize = 22.sp,
-                        modifier = Modifier.padding(start = 12.dp),
-                    )
-                } else {
-                    LazyRow(
-                        state = listState,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.fillMaxSize(),
-                    ) {
-                        itemsIndexed(sentence) { _, p ->
-                            PictogramTile(
-                                p = p,
-                                onClick = onSpeak,
-                                modifier = Modifier.fillMaxHeight().aspectRatio(1f),
-                            )
+        if (compact) {
+            // Telefon: zdanie na całą szerokość, przyciski w rzędzie pod spodem.
+            Column(Modifier.padding(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SentenceStrip(sentence, onSpeak, Modifier.fillMaxWidth().height(84.dp))
+                Row(
+                    Modifier.fillMaxWidth().height(56.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    BarButton("🔊", "Mów", onSpeak, Modifier.weight(1.4f).fillMaxHeight(), true, compact = true)
+                    BarButton("⌫", "Cofnij", onBackspace, Modifier.weight(1f).fillMaxHeight(), compact = true)
+                    BarButton("✖", "Wyczyść", onClear, Modifier.weight(1f).fillMaxHeight(), compact = true)
+                    if (editMode) {
+                        RoundIconButton(onClick = onSettings, size = 52.dp) {
+                            Icon(Icons.Default.Settings, contentDescription = "Ustawienia")
                         }
                     }
+                    LockButton(editMode = editMode, onToggle = onToggleEdit, size = 52.dp)
                 }
             }
-            BarButton("🔊", "Mów", onSpeak, highlighted = true)
-            BarButton("⌫", "Cofnij", onBackspace)
-            BarButton("✖", "Wyczyść", onClear)
-            if (editMode) {
-                RoundIconButton(onClick = onSettings) {
-                    Icon(Icons.Default.Settings, contentDescription = "Ustawienia")
+        } else {
+            Row(
+                Modifier.height(140.dp).padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                SentenceStrip(sentence, onSpeak, Modifier.weight(1f).fillMaxHeight())
+                BarButton("🔊", "Mów", onSpeak, Modifier.width(120.dp).fillMaxHeight(), true)
+                BarButton("⌫", "Cofnij", onBackspace, Modifier.width(96.dp).fillMaxHeight())
+                BarButton("✖", "Wyczyść", onClear, Modifier.width(96.dp).fillMaxHeight())
+                if (editMode) {
+                    RoundIconButton(onClick = onSettings) {
+                        Icon(Icons.Default.Settings, contentDescription = "Ustawienia")
+                    }
                 }
+                LockButton(editMode = editMode, onToggle = onToggleEdit)
             }
-            LockButton(editMode = editMode, onToggle = onToggleEdit)
         }
     }
 }
 
 @Composable
-private fun BarButton(glyph: String, label: String, onClick: () -> Unit, highlighted: Boolean = false) {
+private fun SentenceStrip(sentence: List<Pictogram>, onSpeak: () -> Unit, modifier: Modifier) {
+    val listState = rememberLazyListState()
+    LaunchedEffect(sentence.size) {
+        if (sentence.isNotEmpty()) listState.animateScrollToItem(sentence.lastIndex)
+    }
+    // Dotknięcie paska zdania = przeczytaj całe zdanie (typowe w AAC).
+    Box(modifier.clickable(onClick = onSpeak), contentAlignment = Alignment.CenterStart) {
+        if (sentence.isEmpty()) {
+            Text(
+                "Dotknij piktogramu, aby ułożyć zdanie",
+                color = TileText.copy(alpha = 0.45f),
+                fontSize = 18.sp,
+                modifier = Modifier.padding(start = 12.dp),
+            )
+        } else {
+            LazyRow(
+                state = listState,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                itemsIndexed(sentence) { _, p ->
+                    PictogramTile(
+                        p = p,
+                        onClick = onSpeak,
+                        modifier = Modifier.fillMaxHeight().aspectRatio(1f),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BarButton(
+    glyph: String,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier,
+    highlighted: Boolean = false,
+    compact: Boolean = false,
+) {
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
         color = if (highlighted) MaterialTheme.colorScheme.primary else Color(0xFFEDEFF4),
         contentColor = if (highlighted) Color.White else TileText,
-        modifier = Modifier.width(if (highlighted) 120.dp else 96.dp).fillMaxHeight(),
+        modifier = modifier,
     ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Text(glyph, fontSize = 40.sp)
-            Text(label, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+        if (compact) {
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(glyph, fontSize = 22.sp)
+                if (highlighted) {
+                    Spacer(Modifier.width(6.dp))
+                    Text(label, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        } else {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(glyph, fontSize = 40.sp)
+                Text(label, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+            }
         }
     }
 }
 
 @Composable
-private fun RoundIconButton(onClick: () -> Unit, content: @Composable () -> Unit) {
+private fun RoundIconButton(onClick: () -> Unit, size: Dp = 64.dp, content: @Composable () -> Unit) {
     Surface(
         onClick = onClick,
         shape = CircleShape,
         color = Color(0xFFEDEFF4),
-        modifier = Modifier.size(64.dp),
+        modifier = Modifier.size(size),
     ) {
         Box(contentAlignment = Alignment.Center) { content() }
     }
@@ -259,11 +343,11 @@ private fun RoundIconButton(onClick: () -> Unit, content: @Composable () -> Unit
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun LockButton(editMode: Boolean, onToggle: () -> Unit) {
+private fun LockButton(editMode: Boolean, onToggle: () -> Unit, size: Dp = 64.dp) {
     val context = LocalContext.current
     Box(
         Modifier
-            .size(64.dp)
+            .size(size)
             .clip(CircleShape)
             .background(if (editMode) MaterialTheme.colorScheme.primary else Color(0xFFEDEFF4))
             .combinedClickable(
@@ -375,6 +459,66 @@ private fun CategoryRail(
     }
 }
 
+
+/** Kategorie jako przewijany poziomo pasek – dla wąskich ekranów. */
+@Composable
+private fun CategoryStrip(
+    categories: List<Category>,
+    selectedId: Long?,
+    editMode: Boolean,
+    onSelect: (Long) -> Unit,
+    onEdit: (Category) -> Unit,
+    onAdd: () -> Unit,
+) {
+    val listState = rememberLazyListState()
+    LaunchedEffect(selectedId, categories.size) {
+        val index = categories.indexOfFirst { it.id == selectedId }
+        if (index >= 0) listState.animateScrollToItem(index)
+    }
+    LazyRow(
+        state = listState,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth().height(56.dp),
+    ) {
+        items(categories, key = { it.id }) { c ->
+            val selected = c.id == selectedId
+            Surface(
+                onClick = { if (editMode && selected) onEdit(c) else onSelect(c.id) },
+                shape = RoundedCornerShape(28.dp),
+                color = if (selected) MaterialTheme.colorScheme.primary else Color.White,
+                contentColor = if (selected) Color.White else TileText,
+                modifier = Modifier.fillMaxHeight(),
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(c.emoji, fontSize = 24.sp)
+                    Spacer(Modifier.width(8.dp))
+                    Text(c.name, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                    if (editMode && selected) {
+                        Spacer(Modifier.width(6.dp))
+                        Icon(Icons.Default.Edit, contentDescription = "Edytuj kategorię", modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+        }
+        if (editMode) {
+            item(key = "add-category") {
+                OutlinedButton(
+                    onClick = onAdd,
+                    shape = RoundedCornerShape(28.dp),
+                    modifier = Modifier.fillMaxHeight(),
+                ) {
+                    Icon(Icons.Default.Add, contentDescription = null)
+                    Spacer(Modifier.width(6.dp))
+                    Text("Kategoria")
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun PictogramGrid(
     pictograms: List<Pictogram>,
@@ -395,24 +539,30 @@ private fun PictogramGrid(
         }
         return
     }
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(columns),
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(bottom = 12.dp),
-    ) {
-        items(pictograms, key = { it.id }) { p ->
-            PictogramTile(
-                p = p,
-                onClick = { onTap(p) },
-                modifier = Modifier.aspectRatio(1f),
-                showEditBadge = editMode,
-            )
-        }
-        if (editMode) {
-            item(key = "add-pictogram") {
-                AddTile(onClick = onAdd, modifier = Modifier.aspectRatio(1f))
+    BoxWithConstraints(modifier) {
+        val spacing = 10.dp
+        // Ustawiona liczba kolumn to maksimum – na wąskim ekranie kafelki nie zejdą poniżej MinTile.
+        val fitting = ((maxWidth + spacing) / (MinTile + spacing)).toInt().coerceAtLeast(2)
+        val effectiveColumns = columns.coerceAtMost(fitting)
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(effectiveColumns),
+            modifier = Modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.spacedBy(spacing),
+            verticalArrangement = Arrangement.spacedBy(spacing),
+            contentPadding = PaddingValues(bottom = 12.dp),
+        ) {
+            items(pictograms, key = { it.id }) { p ->
+                PictogramTile(
+                    p = p,
+                    onClick = { onTap(p) },
+                    modifier = Modifier.aspectRatio(1f),
+                    showEditBadge = editMode,
+                )
+            }
+            if (editMode) {
+                item(key = "add-pictogram") {
+                    AddTile(onClick = onAdd, modifier = Modifier.aspectRatio(1f))
+                }
             }
         }
     }
