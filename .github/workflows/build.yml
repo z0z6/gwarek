@@ -27,6 +27,12 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Pamięć podręczna biblioteki symboli
+        uses: actions/cache@v4
+        with:
+          path: app/src/main/assets/symbols
+          key: symbols-${{ hashFiles('tools/fetch_symbols.py') }}
+
       - name: Odtwórz keystore (jeśli ustawiony w Secrets)
         if: ${{ env.KEYSTORE_BASE64 != '' }}
         run: |
