@@ -19,6 +19,7 @@ import org.gadka.aac.data.Prefs
 import org.gadka.aac.data.SeedData
 import org.gadka.aac.data.Settings
 import org.gadka.aac.data.spokenOrLabel
+import org.gadka.aac.symbols.SymbolLibrary
 import org.gadka.aac.tts.Speaker
 import org.gadka.aac.tts.TtsStatus
 
@@ -53,6 +54,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     init {
         speaker.rate = _settings.value.speechRate
         viewModelScope.launch { SeedData.ensureSeeded(db) }
+        viewModelScope.launch { SymbolLibrary.load(app) }
         // Zawsze miej zaznaczoną jakąś istniejącą kategorię.
         viewModelScope.launch {
             categories.collect { list ->

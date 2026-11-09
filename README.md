@@ -2,9 +2,10 @@
 
 Otwartoźródłowy komunikator AAC (komunikacja wspomagająca i alternatywna) na Androida, projektowany przede wszystkim pod tablety. Działa w pełni offline.
 
-## Stan: etap 1
+## Stan: etap 2
 
-- tablica piktogramów z kategoriami (ok. 100 słów startowych, na razie jako emoji)
+- tablica piktogramów z kategoriami (ok. 100 słów startowych)
+- biblioteka ok. 5 400 wolnych symboli z polskimi nazwami i wyszukiwarką (także bez polskich znaków: „zolw” znajdzie „żółw”)
 - pasek zdania: budowanie wypowiedzi, odczyt całości, cofnij, wyczyść
 - synteza mowy offline przez systemowy silnik TTS (polski głos)
 - kolory kafelków wg zmodyfikowanego klucza Fitzgeralda
@@ -14,7 +15,7 @@ Otwartoźródłowy komunikator AAC (komunikacja wspomagająca i alternatywna) na
 ## Plan
 
 1. ✅ Szkielet, TTS, edycja tablic, CI
-2. Baza piktogramów z wyszukiwarką po polskich słowach
+2. ✅ Baza piktogramów z wyszukiwarką po polskich słowach
 3. Kreator piktogramów (zdjęcie, rysowanie, łączenie) i druk do PDF
 4. Lokalne agenty AI: przewidywanie kolejnego słowa, odmiana zdań po polsku, generowanie tablic tematycznych
 5. Kopie zapasowe, import/eksport (Open Board Format), dostępność
@@ -23,11 +24,13 @@ Otwartoźródłowy komunikator AAC (komunikacja wspomagająca i alternatywna) na
 
 GitHub Actions buduje APK przy każdym pushu do `main` (zakładka **Actions → ostatni przebieg → Artifacts → gadka-apk**).
 
-Lokalnie (JDK 17, Android SDK, Gradle 8.9):
+Lokalnie (JDK 17, Android SDK, Gradle 8.9, Python 3):
 
 ```
 gradle assembleRelease
 ```
+
+Przy pierwszym buildzie Gradle uruchamia `tools/fetch_symbols.py`, który pobiera zestawy symboli (przypięte wersje) do `app/src/main/assets/symbols/`. Ten katalog nie trafia do repo. Aby pobrać go od nowa, usuń katalog.
 
 Jeśli wolisz wrapper: `gradle wrapper --gradle-version 8.9`, a potem `./gradlew assembleRelease`.
 
@@ -55,6 +58,15 @@ Plik `gadka.jks` trzymaj bezpiecznie poza repozytorium. Jego utrata oznacza, że
 
 Aplikacja korzysta z systemowego TTS. Jeśli brakuje polskiego głosu, pokaże przycisk instalacji. Po pobraniu głos działa bez internetu.
 
-## Licencja
+## Licencje
 
-Kod: proponowana GPL-3.0 (dodaj plik LICENSE przez GitHub). Licencja zestawu piktogramów zostanie opisana w etapie 2.
+Wszystko jest bezpłatne i wolne, również do zastosowań komercyjnych.
+
+| Element | Licencja |
+|---|---|
+| Kod aplikacji | GNU GPL v3 |
+| [Mulberry Symbols](https://mulberrysymbols.org) (Steve Lee i współtwórcy, wraz z polskimi nazwami) | CC BY-SA 4.0 |
+| [OpenMoji](https://openmoji.org) | CC BY-SA 4.0 |
+| Polskie nazwy emoji: Unicode CLDR | Unicode License v3 |
+
+Warunki CC BY-SA spełnia sama aplikacja: autorzy są wymienieni w Ustawienia → Licencje i autorzy symboli. Piktogramy przerobione z tych zestawów pozostają na CC BY-SA 4.0.

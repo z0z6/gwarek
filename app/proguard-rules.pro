@@ -1,1 +1,3 @@
-# Na razie bez dodatkowych reguł – Room i Compose mają własne reguły konsumenckie.
+# AndroidSVG
+-keep class com.caverock.androidsvg.** { *; }
+-dontwarn com.caverock.androidsvg.**

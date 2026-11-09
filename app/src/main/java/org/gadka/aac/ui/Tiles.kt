@@ -19,6 +19,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,6 +34,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import org.gadka.aac.data.Pictogram
 import org.gadka.aac.model.WordType
+import org.gadka.aac.symbols.ASSET_PREFIX
+import org.gadka.aac.symbols.SvgAssetImage
+import org.gadka.aac.symbols.SymbolLibrary
 import org.gadka.aac.ui.theme.TileText
 
 @Composable
@@ -80,34 +85,39 @@ fun PictogramTile(
 
 @Composable
 fun PictogramImage(p: Pictogram, modifier: Modifier = Modifier) {
-    val bitmap = remember(p.imagePath) {
-        p.imagePath?.let { path ->
-            runCatching { BitmapFactory.decodeFile(path)?.asImageBitmap() }.getOrNull()
-        }
+    // Obserwujemy bibliotekę, żeby po jej wczytaniu emoji zamieniły się na obrazki OpenMoji.
+    val library by SymbolLibrary.symbols.collectAsState()
+    val path = p.imagePath
+    val emoji = p.emoji
+    val assetPath: String? = when {
+        path != null && path.startsWith(ASSET_PREFIX) -> path.removePrefix(ASSET_PREFIX)
+        path == null && !emoji.isNullOrBlank() && library.isNotEmpty() ->
+            SymbolLibrary.forEmoji(emoji)?.assetPath
+        else -> null
     }
-    BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
-        val side = if (maxWidth < maxHeight) maxWidth else maxHeight
-        val glyphSize = with(LocalDensity.current) { (side * 0.62f).toSp() }
-        when {
-            bitmap != null -> Image(
-                bitmap = bitmap,
-                contentDescription = p.label,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize(),
-            )
-            !p.emoji.isNullOrBlank() -> Text(
-                text = p.emoji,
+    val filePath = path?.takeIf { !it.startsWith(ASSET_PREFIX) }
+    val fileBitmap = remember(filePath) {
+        filePath?.let { runCatching { BitmapFactory.decodeFile(it)?.asImageBitmap() }.getOrNull() }
+    }
+
+    when {
+        assetPath != null -> SvgAssetImage(assetPath, p.label, modifier)
+        fileBitmap != null -> Image(
+            bitmap = fileBitmap,
+            contentDescription = p.label,
+            contentScale = ContentScale.Fit,
+            modifier = modifier,
+        )
+        else -> BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
+            val side = if (maxWidth < maxHeight) maxWidth else maxHeight
+            val glyphSize = with(LocalDensity.current) { (side * 0.62f).toSp() }
+            Text(
+                text = if (!emoji.isNullOrBlank()) emoji else p.label.take(1).uppercase(),
                 fontSize = glyphSize,
                 lineHeight = glyphSize,
                 maxLines = 1,
                 textAlign = TextAlign.Center,
-            )
-            else -> Text(
-                text = p.label.take(1).uppercase(),
-                fontSize = glyphSize,
-                lineHeight = glyphSize,
-                fontWeight = FontWeight.Bold,
-                color = TileText.copy(alpha = 0.5f),
+                color = if (!emoji.isNullOrBlank()) TileText else TileText.copy(alpha = 0.5f),
             )
         }
     }

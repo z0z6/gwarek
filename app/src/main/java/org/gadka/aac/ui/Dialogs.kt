@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
@@ -29,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import org.gadka.aac.data.Category
@@ -37,6 +39,7 @@ import org.gadka.aac.data.Settings
 import java.util.Locale
 import kotlin.math.roundToInt
 import org.gadka.aac.model.WordType
+import org.gadka.aac.symbols.ASSET_PREFIX
 
 private val wideDialog = DialogProperties(usePlatformDefaultWidth = false)
 
@@ -54,7 +57,22 @@ fun PictogramEditDialog(
     var emoji by remember { mutableStateOf(initial.emoji.orEmpty()) }
     var type by remember { mutableStateOf(WordType.from(initial.wordType)) }
     var categoryId by remember { mutableStateOf(initial.categoryId) }
+    var imagePath by remember { mutableStateOf(initial.imagePath) }
     var confirmDelete by remember { mutableStateOf(false) }
+    var showPicker by remember { mutableStateOf(false) }
+
+    if (showPicker) {
+        SymbolPickerDialog(
+            initialQuery = label,
+            onDismiss = { showPicker = false },
+            onPick = { s ->
+                imagePath = ASSET_PREFIX + s.assetPath
+                if (label.isBlank()) label = s.label
+                type = s.type
+                showPicker = false
+            },
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -63,15 +81,27 @@ fun PictogramEditDialog(
         title = { Text(if (initial.id == 0L) "Nowy piktogram" else "Edytuj piktogram") },
         text = {
             Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
-                PictogramTile(
-                    p = initial.copy(
-                        label = label.ifBlank { "?" },
-                        emoji = emoji.ifBlank { null },
-                        wordType = type.name,
-                    ),
-                    onClick = {},
-                    modifier = Modifier.size(170.dp),
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    PictogramTile(
+                        p = initial.copy(
+                            label = label.ifBlank { "?" },
+                            emoji = emoji.ifBlank { null },
+                            imagePath = imagePath,
+                            wordType = type.name,
+                        ),
+                        onClick = { showPicker = true },
+                        modifier = Modifier.size(170.dp),
+                    )
+                    Button(onClick = { showPicker = true }, modifier = Modifier.width(170.dp)) {
+                        Text("Biblioteka")
+                    }
+                    if (imagePath != null) {
+                        TextButton(onClick = { imagePath = null }) { Text("Usuń obrazek") }
+                    }
+                }
                 Column(
                     Modifier.weight(1f).verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -95,7 +125,7 @@ fun PictogramEditDialog(
                         onValueChange = { emoji = it },
                         label = { Text("Symbol (emoji)") },
                         supportingText = {
-                            Text("Na razie emoji – baza piktogramów i zdjęcia dojdą w kolejnych etapach.")
+                            Text("Używane, gdy nie wybrano obrazka z biblioteki.")
                         },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
@@ -143,6 +173,7 @@ fun PictogramEditDialog(
                             label = label.trim(),
                             spokenText = spoken.trim().ifBlank { null },
                             emoji = emoji.trim().ifBlank { null },
+                            imagePath = imagePath,
                             wordType = type.name,
                             categoryId = categoryId,
                         )
@@ -235,6 +266,9 @@ fun SettingsDialog(
     var columns by remember { mutableIntStateOf(initial.columns) }
     var rate by remember { mutableFloatStateOf(initial.speechRate) }
     var speakOnTap by remember { mutableStateOf(initial.speakOnTap) }
+    var showCredits by remember { mutableStateOf(false) }
+
+    if (showCredits) CreditsDialog(onDismiss = { showCredits = false })
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -259,8 +293,9 @@ fun SettingsDialog(
                     Text("Czytaj piktogram po dotknięciu", modifier = Modifier.weight(1f))
                     Switch(checked = speakOnTap, onCheckedChange = { speakOnTap = it })
                 }
+                TextButton(onClick = { showCredits = true }) { Text("Licencje i autorzy symboli") }
                 Text(
-                    "Gadka 0.1 · etap 1",
+                    "Gadka 0.2 · etap 2",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 )
@@ -272,5 +307,26 @@ fun SettingsDialog(
             }) { Text("Zapisz") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Anuluj") } },
+    )
+}
+
+@Composable
+fun CreditsDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val credits = remember {
+        runCatching {
+            context.assets.open("symbols/CREDITS.txt").bufferedReader().use { it.readText() }
+        }.getOrDefault("Biblioteka symboli nie jest dołączona do tej wersji.")
+    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Licencje i autorzy") },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState())) {
+                Text("Gadka – wolne oprogramowanie na licencji GNU GPL v3.\n")
+                Text(credits)
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Zamknij") } },
     )
 }

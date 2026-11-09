@@ -17,8 +17,8 @@ android {
         applicationId = "org.gadka.aac"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
     }
 
     signingConfigs {
@@ -82,9 +82,22 @@ dependencies {
     implementation("androidx.compose.material3:material3")
     implementation("androidx.compose.material:material-icons-core")
 
+    implementation("com.caverock:androidsvg-aar:1.4")
+
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }
+
+// Biblioteka symboli (Mulberry + OpenMoji) nie jest trzymana w repo – pobiera ją skrypt
+// przy pierwszym buildzie. Żeby pobrać ponownie, usuń app/src/main/assets/symbols.
+val symbolsIndex = file("src/main/assets/symbols/index.tsv")
+val fetchSymbols by tasks.registering(Exec::class) {
+    description = "Pobiera wolne zestawy symboli i przygotowuje assets"
+    workingDir = rootDir
+    commandLine("python3", "tools/fetch_symbols.py")
+    onlyIf { !symbolsIndex.exists() }
+}
+tasks.named("preBuild") { dependsOn(fetchSymbols) }
