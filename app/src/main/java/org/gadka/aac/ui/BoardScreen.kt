@@ -98,6 +98,7 @@ fun BoardScreen(vm: MainViewModel) {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         BoxWithConstraints(Modifier.fillMaxSize()) {
             val compact = maxWidth < CompactWidth
+            val railWidth = if (maxWidth < 840.dp) 180.dp else 220.dp
             val gap = if (compact) 8.dp else 12.dp
             Column(
                 Modifier.fillMaxSize().padding(gap),
@@ -148,7 +149,7 @@ fun BoardScreen(vm: MainViewModel) {
                             onEdit = onCategoryEdit,
                             onAdd = onCategoryAdd,
                             modifier = Modifier
-                                .width(if (maxWidth < 840.dp) 180.dp else 220.dp)
+                                .width(railWidth)
                                 .fillMaxHeight(),
                         )
                         PictogramGrid(
