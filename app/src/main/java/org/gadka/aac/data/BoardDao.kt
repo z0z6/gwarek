@@ -18,6 +18,18 @@ interface BoardDao {
     @Query("SELECT * FROM pictograms WHERE categoryId = :categoryId ORDER BY position, id")
     suspend fun pictogramsOnce(categoryId: Long): List<Pictogram>
 
+    @Query("INSERT OR IGNORE INTO transitions(fromId, toId, count) VALUES(:fromId, :toId, 0)")
+    suspend fun ensureTransition(fromId: Long, toId: Long)
+
+    @Query("UPDATE transitions SET count = count + 1 WHERE fromId = :fromId AND toId = :toId")
+    suspend fun bumpTransition(fromId: Long, toId: Long)
+
+    @Query(
+        "SELECT p.* FROM transitions t JOIN pictograms p ON p.id = t.toId " +
+            "WHERE t.fromId = :fromId ORDER BY t.count DESC, p.position LIMIT :limit"
+    )
+    fun predictions(fromId: Long, limit: Int): Flow<List<Pictogram>>
+
     @Query("SELECT COUNT(*) FROM categories")
     suspend fun categoryCount(): Int
 

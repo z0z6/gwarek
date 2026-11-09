@@ -70,6 +70,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.gadka.aac.data.Category
 import org.gadka.aac.data.Pictogram
 import org.gadka.aac.tts.TtsStatus
+import org.gadka.aac.ai.LlmStatus
 import org.gadka.aac.ui.theme.TileText
 
 /** Poniżej tej szerokości (telefony, tablety w pionie) układ jest kompaktowy. */
@@ -87,6 +88,13 @@ fun BoardScreen(vm: MainViewModel) {
     val editMode by vm.editMode.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val ttsStatus by vm.ttsStatus.collectAsStateWithLifecycle()
+    val predictions by vm.predictions.collectAsStateWithLifecycle()
+    val correctedText by vm.correctedText.collectAsStateWithLifecycle()
+    val assistantBusy by vm.assistantBusy.collectAsStateWithLifecycle()
+    val llmStatus by vm.llmStatus.collectAsStateWithLifecycle()
+    val importProgress by vm.modelImportProgress.collectAsStateWithLifecycle()
+    val aiMessage by vm.aiMessage.collectAsStateWithLifecycle()
+    var showAi by remember { mutableStateOf(false) }
 
     var editingPictogram by remember { mutableStateOf<Pictogram?>(null) }
     var editingCategory by remember { mutableStateOf<Category?>(null) }
@@ -125,6 +133,22 @@ fun BoardScreen(vm: MainViewModel) {
 
                 if (ttsStatus == TtsStatus.MISSING_LANGUAGE || ttsStatus == TtsStatus.ERROR) {
                     TtsBanner(ttsStatus, onRecheck = vm::recheckVoice)
+                }
+
+                if (settings.smartSpeech && llmStatus == LlmStatus.READY && sentence.size >= 2) {
+                    AssistantLine(
+                        text = correctedText,
+                        busy = assistantBusy,
+                        onClick = { correctedText?.let { vm.speakText(it) } },
+                    )
+                }
+
+                if (settings.showPredictions && !editMode && predictions.isNotEmpty()) {
+                    PredictionRow(
+                        predictions = predictions,
+                        height = if (compact) 84.dp else 104.dp,
+                        onTap = { vm.onPictogramTap(it) },
+                    )
                 }
 
                 if (compact) {
@@ -193,6 +217,21 @@ fun BoardScreen(vm: MainViewModel) {
             onDelete = if (c.id != 0L) {
                 { vm.deleteCategory(c); editingCategory = null }
             } else null,
+            onGenerate = if (c.id == 0L && llmStatus == LlmStatus.READY) {
+                { name, emoji ->
+                    editingCategory = null
+                    Toast.makeText(context, "Asystent przygotowuje tablicę…", Toast.LENGTH_LONG).show()
+                    scope.launch {
+                        val n = vm.generateBoard(name, emoji)
+                        Toast.makeText(
+                            context,
+                            if (n != null) "Dodano $n piktogramów – sprawdź je i popraw w razie potrzeby"
+                            else "Nie udało się wygenerować tablicy",
+                            Toast.LENGTH_LONG,
+                        ).show()
+                    }
+                }
+            } else null,
         )
     }
     if (showPrint) {
@@ -219,6 +258,20 @@ fun BoardScreen(vm: MainViewModel) {
             initial = settings,
             onDismiss = { showSettings = false },
             onSave = { vm.updateSettings(it); showSettings = false },
+            onOpenAi = { showSettings = false; showAi = true },
+        )
+    }
+    if (showAi) {
+        AiDialog(
+            status = llmStatus,
+            modelSizeBytes = remember(llmStatus, importProgress) { vm.modelSizeBytes() },
+            importProgress = importProgress,
+            message = aiMessage,
+            settings = settings,
+            onSettings = vm::updateSettings,
+            onImport = vm::importModel,
+            onRemove = vm::removeModel,
+            onDismiss = { showAi = false },
         )
     }
 }
@@ -594,6 +647,54 @@ private fun PictogramGrid(
                 item(key = "add-pictogram") {
                     AddTile(onClick = onAdd, modifier = Modifier.aspectRatio(1f))
                 }
+            }
+        }
+    }
+}
+
+/** Zdanie ułożone przez asystenta – dotknięcie odczytuje je ponownie. */
+@Composable
+private fun AssistantLine(text: String?, busy: Boolean, onClick: () -> Unit) {
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(14.dp),
+        color = Color(0xFFEFF3FF),
+        contentColor = TileText,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("✨", fontSize = 20.sp)
+            Spacer(Modifier.width(10.dp))
+            when {
+                busy && text == null -> Text("Układam zdanie…", color = TileText.copy(alpha = 0.6f), fontSize = 18.sp)
+                text != null -> Text(text, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+                else -> Text("Nie udało się ułożyć zdania", color = TileText.copy(alpha = 0.6f), fontSize = 18.sp)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PredictionRow(predictions: List<Pictogram>, height: Dp, onTap: (Pictogram) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().height(height),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("💡", fontSize = 22.sp)
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxHeight(),
+        ) {
+            items(predictions, key = { it.id }) { p ->
+                PictogramTile(
+                    p = p,
+                    onClick = { onTap(p) },
+                    modifier = Modifier.fillMaxHeight().aspectRatio(1f),
+                )
             }
         }
     }

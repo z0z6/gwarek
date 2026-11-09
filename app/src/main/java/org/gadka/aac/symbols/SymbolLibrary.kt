@@ -81,6 +81,14 @@ object SymbolLibrary {
     fun forEmoji(emoji: String): Symbol? =
         byEmoji[emoji] ?: byEmoji[emoji.replace("\uFE0F", "")]
 
+    /** Najlepszy symbol dla słowa, o ile nazwa naprawdę pasuje. */
+    fun bestMatch(all: List<Symbol>, word: String): Symbol? {
+        val w = normalize(word.trim())
+        if (w.isEmpty()) return null
+        return search(all, word, null).firstOrNull { it.normLabel == w || it.normLabel.startsWith("$w ") }
+            ?: search(all, word, null).firstOrNull { it.normLabel.startsWith(w) }
+    }
+
     fun search(all: List<Symbol>, query: String, domain: String?): List<Symbol> {
         val pool = if (domain == null) all else all.filter { it.domain == domain }
         val q = normalize(query.trim())

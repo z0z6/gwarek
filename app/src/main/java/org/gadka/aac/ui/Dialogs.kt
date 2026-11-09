@@ -233,6 +233,7 @@ fun CategoryEditDialog(
     onDismiss: () -> Unit,
     onSave: (Category) -> Unit,
     onDelete: (() -> Unit)?,
+    onGenerate: ((name: String, emoji: String) -> Unit)? = null,
 ) {
     var name by remember { mutableStateOf(initial.name) }
     var emoji by remember { mutableStateOf(initial.emoji) }
@@ -257,6 +258,17 @@ fun CategoryEditDialog(
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
+                if (onGenerate != null) {
+                    OutlinedButton(
+                        onClick = { onGenerate(name.trim(), emoji.trim().ifBlank { "⭐" }) },
+                        enabled = name.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("✨ Wypełnij piktogramami (AI)") }
+                    Text(
+                        "Asystent zaproponuje słownictwo do tematu z nazwy, np. „Wizyta u dentysty”.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
                 if (confirmDelete) {
                     Text(
                         "Usunięcie kategorii usunie też wszystkie jej piktogramy.",
@@ -292,6 +304,7 @@ fun SettingsDialog(
     initial: Settings,
     onDismiss: () -> Unit,
     onSave: (Settings) -> Unit,
+    onOpenAi: () -> Unit,
 ) {
     var columns by remember { mutableIntStateOf(initial.columns) }
     var rate by remember { mutableFloatStateOf(initial.speechRate) }
@@ -324,9 +337,10 @@ fun SettingsDialog(
                     Text("Czytaj piktogram po dotknięciu", modifier = Modifier.weight(1f))
                     Switch(checked = speakOnTap, onCheckedChange = { speakOnTap = it })
                 }
+                TextButton(onClick = onOpenAi) { Text("✨ Asystent AI (offline)…") }
                 TextButton(onClick = { showCredits = true }) { Text("Licencje i autorzy symboli") }
                 Text(
-                    "Gadka 0.3 · biblioteka: $symbolCount symboli",
+                    "Gadka 0.4 · biblioteka: $symbolCount symboli",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 )
@@ -354,7 +368,7 @@ fun CreditsDialog(onDismiss: () -> Unit) {
         title = { Text("Licencje i autorzy") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
-                Text("Gadka – wolne oprogramowanie na licencji GNU GPL v3.\n")
+                Text("Gadka – wolne oprogramowanie na licencji GNU GPL v3.\nSilnik asystenta AI: llama.cpp (licencja MIT).\n")
                 Text(credits)
             }
         },

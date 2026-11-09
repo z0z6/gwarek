@@ -4,8 +4,20 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Category::class, Pictogram::class], version = 1, exportSchema = false)
+/** v2: tabela przejść do podpowiedzi kolejnego piktogramu. */
+private val MIGRATION_1_2 = object : Migration(1, 2) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `transitions` (`fromId` INTEGER NOT NULL, `toId` INTEGER NOT NULL, " +
+                "`count` INTEGER NOT NULL, PRIMARY KEY(`fromId`, `toId`))"
+        )
+    }
+}
+
+@Database(entities = [Category::class, Pictogram::class, Transition::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun boardDao(): BoardDao
 
@@ -19,7 +31,7 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "gadka.db",
-                ).build().also { instance = it }
+                ).addMigrations(MIGRATION_1_2).build().also { instance = it }
             }
     }
 }

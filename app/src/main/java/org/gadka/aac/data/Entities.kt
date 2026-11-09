@@ -41,4 +41,12 @@ data class Pictogram(
     val position: Int = 0,
 )
 
+/** Ile razy po piktogramie fromId wybrano toId (0 = początek zdania). Podstawa podpowiedzi. */
+@Entity(tableName = "transitions", primaryKeys = ["fromId", "toId"])
+data class Transition(
+    val fromId: Long,
+    val toId: Long,
+    val count: Int,
+)
+
 fun Pictogram.spokenOrLabel(): String = spokenText?.takeIf { it.isNotBlank() } ?: label
