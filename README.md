@@ -2,7 +2,7 @@
 
 Otwartoźródłowy komunikator AAC (komunikacja wspomagająca i alternatywna) na Androida, projektowany przede wszystkim pod tablety. Działa w pełni offline.
 
-## Stan: etap 2
+## Stan: etap 3
 
 - tablica piktogramów z kategoriami (ok. 100 słów startowych)
 - biblioteka ok. 5 400 wolnych symboli z polskimi nazwami i wyszukiwarką (także bez polskich znaków: „zolw” znajdzie „żółw”)
@@ -10,13 +10,15 @@ Otwartoźródłowy komunikator AAC (komunikacja wspomagająca i alternatywna) na
 - synteza mowy offline przez systemowy silnik TTS (polski głos)
 - kolory kafelków wg zmodyfikowanego klucza Fitzgeralda
 - tryb edycji chroniony przytrzymaniem kłódki: dodawanie, edycja i usuwanie piktogramów oraz kategorii
+- kreator piktogramów: zdjęcie z aparatu lub galerii z kadrowaniem, łączenie dwóch symboli, rysowanie palcem, znak przekreślenia
+- druk kart na A4 (4/6/8 cm, podpis, kolory, linie cięcia) lub zapis do PDF; symbole drukują się wektorowo
 - ustawienia: liczba kolumn, tempo mowy, czytanie po dotknięciu
 
 ## Plan
 
 1. ✅ Szkielet, TTS, edycja tablic, CI
 2. ✅ Baza piktogramów z wyszukiwarką po polskich słowach
-3. Kreator piktogramów (zdjęcie, rysowanie, łączenie) i druk do PDF
+3. ✅ Kreator piktogramów (zdjęcie, rysowanie, łączenie) i druk do PDF
 4. Lokalne agenty AI: przewidywanie kolejnego słowa, odmiana zdań po polsku, generowanie tablic tematycznych
 5. Kopie zapasowe, import/eksport (Open Board Format), dostępność
 

@@ -12,6 +12,12 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
+import java.io.File
+import org.gadka.aac.print.PdfBuilder
+import org.gadka.aac.print.PrintOptions
+import org.gadka.aac.print.PrintSource
 import org.gadka.aac.data.AppDatabase
 import org.gadka.aac.data.Category
 import org.gadka.aac.data.Pictogram
@@ -129,6 +135,28 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun deleteCategory(c: Category) {
         viewModelScope.launch { dao.deleteCategory(c) }
+    }
+
+    // --- Druk ---
+
+    /** Składa PDF z kartami; null, gdy nie ma czego drukować. */
+    suspend fun buildPrintPdf(opt: PrintOptions): File? = withContext(Dispatchers.IO) {
+        val sections: List<Pair<String?, List<Pictogram>>> = when (opt.source) {
+            PrintSource.CATEGORY -> {
+                val c = categories.value.firstOrNull { it.id == _selectedCategoryId.value }
+                    ?: return@withContext null
+                listOf(c.name to dao.pictogramsOnce(c.id))
+            }
+            PrintSource.ALL -> categories.value.map { it.name to dao.pictogramsOnce(it.id) }
+            PrintSource.SENTENCE -> listOf(null to _sentence.value)
+        }
+        if (sections.all { it.second.isEmpty() }) return@withContext null
+        val app = getApplication<Application>()
+        SymbolLibrary.load(app)
+        val dir = File(app.cacheDir, "print").apply { mkdirs() }
+        val out = File(dir, "gadka.pdf")
+        PdfBuilder(app).build(sections, opt, out)
+        out
     }
 
     override fun onCleared() {

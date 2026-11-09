@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
+import org.gadka.aac.data.Pictogram
 import org.gadka.aac.model.WordType
 import java.text.Normalizer
 import java.util.Locale
@@ -97,5 +98,19 @@ object SymbolLibrary {
         }
             .sortedWith(compareBy<Triple<Symbol, Int, Int>>({ it.second }, { it.third }, { it.first.label.length }))
             .map { it.first }
+    }
+}
+
+/**
+ * Plik SVG z biblioteki dla piktogramu: wybrany symbol albo obrazek OpenMoji
+ * odpowiadający emoji. Null, gdy piktogram ma własny obrazek z pliku lub nic.
+ */
+fun Pictogram.libraryAssetPath(): String? {
+    val path = imagePath
+    val e = emoji
+    return when {
+        path != null && path.startsWith(ASSET_PREFIX) -> path.removePrefix(ASSET_PREFIX)
+        path == null && !e.isNullOrBlank() -> SymbolLibrary.forEmoji(e)?.assetPath
+        else -> null
     }
 }

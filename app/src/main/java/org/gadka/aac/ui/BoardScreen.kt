@@ -51,6 +51,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import org.gadka.aac.print.PrintDialog
+import org.gadka.aac.print.printPdf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -87,6 +91,9 @@ fun BoardScreen(vm: MainViewModel) {
     var editingPictogram by remember { mutableStateOf<Pictogram?>(null) }
     var editingCategory by remember { mutableStateOf<Category?>(null) }
     var showSettings by remember { mutableStateOf(false) }
+    var showPrint by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     val onCategoryEdit: (Category) -> Unit = { editingCategory = it }
     val onCategoryAdd: () -> Unit = { editingCategory = Category(name = "", emoji = "⭐") }
@@ -113,6 +120,7 @@ fun BoardScreen(vm: MainViewModel) {
                     onClear = vm::clearSentence,
                     onToggleEdit = { vm.setEditMode(!editMode) },
                     onSettings = { showSettings = true },
+                    onPrint = { showPrint = true },
                 )
 
                 if (ttsStatus == TtsStatus.MISSING_LANGUAGE || ttsStatus == TtsStatus.ERROR) {
@@ -187,6 +195,25 @@ fun BoardScreen(vm: MainViewModel) {
             } else null,
         )
     }
+    if (showPrint) {
+        PrintDialog(
+            categoryName = categories.firstOrNull { it.id == selectedId }?.name,
+            sentenceEmpty = sentence.isEmpty(),
+            onDismiss = { showPrint = false },
+            onPrint = { opt ->
+                showPrint = false
+                Toast.makeText(context, "Przygotowuję wydruk…", Toast.LENGTH_SHORT).show()
+                scope.launch {
+                    val file = vm.buildPrintPdf(opt)
+                    if (file == null) {
+                        Toast.makeText(context, "Brak piktogramów do wydruku", Toast.LENGTH_SHORT).show()
+                    } else {
+                        printPdf(context, file, "Gadka – karty")
+                    }
+                }
+            },
+        )
+    }
     if (showSettings) {
         SettingsDialog(
             initial = settings,
@@ -206,6 +233,7 @@ private fun SentenceBar(
     onClear: () -> Unit,
     onToggleEdit: () -> Unit,
     onSettings: () -> Unit,
+    onPrint: () -> Unit,
 ) {
     Surface(
         shape = RoundedCornerShape(20.dp),
@@ -226,6 +254,7 @@ private fun SentenceBar(
                     BarButton("⌫", "Cofnij", onBackspace, Modifier.weight(1f).fillMaxHeight(), compact = true)
                     BarButton("✖", "Wyczyść", onClear, Modifier.weight(1f).fillMaxHeight(), compact = true)
                     if (editMode) {
+                        RoundIconButton(onClick = onPrint, size = 52.dp) { Text("🖨️", fontSize = 22.sp) }
                         RoundIconButton(onClick = onSettings, size = 52.dp) {
                             Icon(Icons.Default.Settings, contentDescription = "Ustawienia")
                         }
@@ -244,6 +273,7 @@ private fun SentenceBar(
                 BarButton("⌫", "Cofnij", onBackspace, Modifier.width(96.dp).fillMaxHeight())
                 BarButton("✖", "Wyczyść", onClear, Modifier.width(96.dp).fillMaxHeight())
                 if (editMode) {
+                    RoundIconButton(onClick = onPrint) { Text("🖨️", fontSize = 26.sp) }
                     RoundIconButton(onClick = onSettings) {
                         Icon(Icons.Default.Settings, contentDescription = "Ustawienia")
                     }

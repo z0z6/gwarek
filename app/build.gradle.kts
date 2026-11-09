@@ -17,8 +17,8 @@ android {
         applicationId = "org.gadka.aac"
         minSdk = 26
         targetSdk = 34
-        versionCode = 3
-        versionName = "0.2.1"
+        versionCode = 4
+        versionName = "0.3.0"
     }
 
     signingConfigs {
@@ -83,6 +83,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-core")
 
     implementation("com.caverock:androidsvg-aar:1.4")
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
 
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")

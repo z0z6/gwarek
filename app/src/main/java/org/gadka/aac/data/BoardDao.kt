@@ -15,6 +15,9 @@ interface BoardDao {
     @Query("SELECT * FROM pictograms WHERE categoryId = :categoryId ORDER BY position, id")
     fun pictograms(categoryId: Long): Flow<List<Pictogram>>
 
+    @Query("SELECT * FROM pictograms WHERE categoryId = :categoryId ORDER BY position, id")
+    suspend fun pictogramsOnce(categoryId: Long): List<Pictogram>
+
     @Query("SELECT COUNT(*) FROM categories")
     suspend fun categoryCount(): Int
 

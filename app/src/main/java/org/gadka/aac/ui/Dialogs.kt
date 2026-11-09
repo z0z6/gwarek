@@ -15,6 +15,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -42,6 +43,7 @@ import java.util.Locale
 import kotlin.math.roundToInt
 import org.gadka.aac.model.WordType
 import org.gadka.aac.symbols.ASSET_PREFIX
+import org.gadka.aac.creator.PictogramCreatorDialog
 import org.gadka.aac.symbols.SymbolLibrary
 
 private val wideDialog = DialogProperties(usePlatformDefaultWidth = false)
@@ -63,6 +65,18 @@ fun PictogramEditDialog(
     var imagePath by remember { mutableStateOf(initial.imagePath) }
     var confirmDelete by remember { mutableStateOf(false) }
     var showPicker by remember { mutableStateOf(false) }
+    var showCreator by remember { mutableStateOf(false) }
+
+    if (showCreator) {
+        PictogramCreatorDialog(
+            initial = initial.copy(emoji = emoji.ifBlank { null }, imagePath = imagePath),
+            onDismiss = { showCreator = false },
+            onDone = { path ->
+                imagePath = path
+                showCreator = false
+            },
+        )
+    }
 
     if (showPicker) {
         SymbolPickerDialog(
@@ -108,6 +122,9 @@ fun PictogramEditDialog(
                     )
                     Button(onClick = { showPicker = true }, modifier = Modifier.width(170.dp)) {
                         Text("Biblioteka")
+                    }
+                    OutlinedButton(onClick = { showCreator = true }, modifier = Modifier.width(170.dp)) {
+                        Text("Kreator")
                     }
                     if (imagePath != null) {
                         TextButton(onClick = { imagePath = null }) { Text("Usuń obrazek") }
@@ -309,7 +326,7 @@ fun SettingsDialog(
                 }
                 TextButton(onClick = { showCredits = true }) { Text("Licencje i autorzy symboli") }
                 Text(
-                    "Gadka 0.2.1 · biblioteka: $symbolCount symboli",
+                    "Gadka 0.3 · biblioteka: $symbolCount symboli",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                 )

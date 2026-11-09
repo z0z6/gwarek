@@ -35,14 +35,22 @@ object SvgRenderer {
 
     fun cached(assetPath: String, sizePx: Int): Bitmap? = cache.get("$assetPath@$sizePx")
 
+    /** Wczytuje SVG (np. do rysowania wektorowo w PDF). */
+    fun load(context: Context, assetPath: String): SVG? = try {
+        val svg = context.assets.open(assetPath).use { SVG.getFromInputStream(it) }
+        if (svg.documentViewBox == null && svg.documentWidth > 0 && svg.documentHeight > 0) {
+            svg.setDocumentViewBox(0f, 0f, svg.documentWidth, svg.documentHeight)
+        }
+        svg
+    } catch (e: Exception) {
+        null
+    }
+
     fun render(context: Context, assetPath: String, sizePx: Int): Bitmap? {
         val key = "$assetPath@$sizePx"
         cache.get(key)?.let { return it }
+        val svg = load(context, assetPath) ?: return null
         return try {
-            val svg = context.assets.open(assetPath).use { SVG.getFromInputStream(it) }
-            if (svg.documentViewBox == null && svg.documentWidth > 0 && svg.documentHeight > 0) {
-                svg.setDocumentViewBox(0f, 0f, svg.documentWidth, svg.documentHeight)
-            }
             val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
             svg.renderToCanvas(Canvas(bmp), RectF(0f, 0f, sizePx.toFloat(), sizePx.toFloat()))
             cache.put(key, bmp)
