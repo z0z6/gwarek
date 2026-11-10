@@ -9,7 +9,7 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
-val appVersion = "0.6.1"
+val appVersion = "0.6.2"
 
 /*
  * Układ źródeł:
@@ -81,7 +81,7 @@ android {
         applicationId = "org.gwarek.aac"
         minSdk = 26
         targetSdk = 34
-        versionCode = 8
+        versionCode = 9
         versionName = appVersion
 
         // Lokalny model AI (llama.cpp) budujemy tylko dla 64-bitowego ARM – to praktycznie wszystkie tablety.
@@ -148,6 +148,13 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+
+    lint {
+        // Lint 8.7 bywa niezgodny z Kotlinem 2.1 (błąd "KaCallableMemberCall ... interface was expected").
+        // Przy aplikacji budowanej z CI nie jest potrzebny, więc nie przerywa buildu.
+        checkReleaseBuilds = false
+        abortOnError = false
     }
     packaging {
         resources {
