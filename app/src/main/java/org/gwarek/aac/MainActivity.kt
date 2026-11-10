@@ -1,0 +1,24 @@
+package org.gwarek.aac
+
+import android.os.Bundle
+import android.view.WindowManager
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.lifecycle.viewmodel.compose.viewModel
+import org.gwarek.aac.ui.BoardScreen
+import org.gwarek.aac.ui.MainViewModel
+import org.gwarek.aac.ui.theme.GwarekTheme
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        // Komunikator nie powinien gasnąć w trakcie rozmowy.
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        setContent {
+            GwarekTheme {
+                val vm: MainViewModel = viewModel()
+                BoardScreen(vm)
+            }
+        }
+    }
+}

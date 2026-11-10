@@ -41,7 +41,7 @@ OUT = os.path.join(ROOT, "app", "src", "main", "assets", "symbols")
 
 def fetch(url: str) -> bytes:
     print(f"  pobieram {url}", flush=True)
-    req = urllib.request.Request(url, headers={"User-Agent": "gadka-build"})
+    req = urllib.request.Request(url, headers={"User-Agent": "gwarek-build"})
     with urllib.request.urlopen(req, timeout=180) as r:
         return r.read()
 

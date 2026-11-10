@@ -1,8 +1,8 @@
-# Gadka
+# Gwarek
 
 Otwartoźródłowy komunikator AAC (komunikacja wspomagająca i alternatywna) na Androida, projektowany przede wszystkim pod tablety. Działa w pełni offline.
 
-## Stan: etap 4
+## Stan: etap 5 (plan ukończony)
 
 - tablica piktogramów z kategoriami (ok. 100 słów startowych)
 - biblioteka ok. 5 400 wolnych symboli z polskimi nazwami i wyszukiwarką (także bez polskich znaków: „zolw” znajdzie „żółw”)
@@ -14,6 +14,10 @@ Otwartoźródłowy komunikator AAC (komunikacja wspomagająca i alternatywna) na
 - druk kart na A4 (4/6/8 cm, podpis, kolory, linie cięcia) lub zapis do PDF; symbole drukują się wektorowo
 - podpowiedzi kolejnych piktogramów uczące się z wyborów użytkownika (bez AI, natychmiastowe)
 - asystent AI działający w pełni offline (llama.cpp + model GGUF wczytany z pliku): układanie poprawnych zdań po polsku przed odczytaniem, generowanie tablic tematycznych
+- kopia zapasowa całości do jednego pliku .zip i przywracanie
+- import i eksport tablic w otwartym formacie Open Board Format (.obf/.obz), zgodnym z innymi aplikacjami AAC
+- blokada: PIN do trybu edycji, przypinanie ekranu (dziecko nie wyjdzie z aplikacji)
+- dostępność: ukrywanie i powiększanie podpisów, grube obramowania, ignorowanie przypadkowych podwójnych dotknięć
 - ustawienia: liczba kolumn, tempo mowy, czytanie po dotknięciu
 
 ## Plan
@@ -22,11 +26,11 @@ Otwartoźródłowy komunikator AAC (komunikacja wspomagająca i alternatywna) na
 2. ✅ Baza piktogramów z wyszukiwarką po polskich słowach
 3. ✅ Kreator piktogramów (zdjęcie, rysowanie, łączenie) i druk do PDF
 4. ✅ Lokalne agenty AI: przewidywanie kolejnego słowa, odmiana zdań po polsku, generowanie tablic tematycznych
-5. Kopie zapasowe, import/eksport (Open Board Format), dostępność
+5. ✅ Kopie zapasowe, import/eksport (Open Board Format), blokada, dostępność
 
 ## Budowanie
 
-GitHub Actions buduje APK przy każdym pushu do `main` (zakładka **Actions → ostatni przebieg → Artifacts → gadka-apk**).
+GitHub Actions buduje APK przy każdym pushu do `main` (zakładka **Actions → ostatni przebieg → Artifacts → gwarek-apk**).
 
 Lokalnie (JDK 17, Android SDK, Gradle 8.9, Python 3):
 
@@ -43,20 +47,20 @@ Jeśli wolisz wrapper: `gradle wrapper --gradle-version 8.9`, a potem `./gradlew
 Bez własnego klucza każdy build z CI jest podpisany innym, losowym kluczem debug, więc nowej wersji nie da się zainstalować na starą bez odinstalowania, a to kasuje tablice użytkownika. Raz wygeneruj klucz:
 
 ```
-keytool -genkeypair -v -keystore gadka.jks -alias gadka -keyalg RSA -keysize 4096 -validity 10000
-base64 -w0 gadka.jks > gadka.jks.b64
+keytool -genkeypair -v -keystore gwarek.jks -alias gwarek -keyalg RSA -keysize 4096 -validity 10000
+base64 -w0 gwarek.jks > gwarek.jks.b64
 ```
 
 i dodaj w **Settings → Secrets and variables → Actions**:
 
 | Secret | Wartość |
 |---|---|
-| `KEYSTORE_BASE64` | zawartość `gadka.jks.b64` |
+| `KEYSTORE_BASE64` | zawartość `gwarek.jks.b64` |
 | `SIGNING_STORE_PASSWORD` | hasło keystore |
-| `SIGNING_KEY_ALIAS` | `gadka` |
+| `SIGNING_KEY_ALIAS` | `gwarek` |
 | `SIGNING_KEY_PASSWORD` | hasło klucza |
 
-Plik `gadka.jks` trzymaj bezpiecznie poza repozytorium. Jego utrata oznacza, że aktualizacje przestaną się instalować.
+Plik `gwarek.jks` trzymaj bezpiecznie poza repozytorium. Jego utrata oznacza, że aktualizacje przestaną się instalować.
 
 ## Asystent AI
 

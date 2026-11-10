@@ -10,15 +10,15 @@ plugins {
 val keystorePath: String? = System.getenv("SIGNING_KEYSTORE_PATH")
 
 android {
-    namespace = "org.gadka.aac"
+    namespace = "org.gwarek.aac"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "org.gadka.aac"
+        applicationId = "org.gwarek.aac"
         minSdk = 26
         targetSdk = 34
-        versionCode = 5
-        versionName = "0.4.0"
+        versionCode = 6
+        versionName = "0.5.0"
 
         // Lokalny model AI (llama.cpp) budujemy tylko dla 64-bitowego ARM – to praktycznie wszystkie tablety.
         ndk {

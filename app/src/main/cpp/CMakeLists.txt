@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22.1)
-project(gadka_llm C CXX)
+project(gwarek_llm C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -28,8 +28,8 @@ set(GGML_LLAMAFILE OFF CACHE BOOL "" FORCE)
 
 FetchContent_MakeAvailable(llama)
 
-add_library(gadka_llm SHARED gadka_llm.cpp)
-target_link_libraries(gadka_llm PRIVATE llama)
+add_library(gwarek_llm SHARED gwarek_llm.cpp)
+target_link_libraries(gwarek_llm PRIVATE llama)
 if(ANDROID)
-    target_link_libraries(gadka_llm PRIVATE android log)
+    target_link_libraries(gwarek_llm PRIVATE android log)
 endif()
