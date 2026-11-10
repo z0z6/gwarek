@@ -52,5 +52,5 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: gadka-apk
+          name: gwarek-apk
           path: app/build/outputs/apk/release/*.apk
