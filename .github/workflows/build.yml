@@ -1,4 +1,4 @@
-name: Build APK
+name: Build
 
 on:
   push:
@@ -6,14 +6,19 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Paczki wynikowe są szyfrowane hasłem z sekretu DIST_PASSWORD (AES-256, 7z).
+# Bez hasła nie da się ich zainstalować ani podejrzeć ich zawartości.
+
 jobs:
-  build:
+  android:
+    name: Android (APK)
     runs-on: ubuntu-latest
     env:
       KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
       SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
       SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
       SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+      DIST_PASSWORD: ${{ secrets.DIST_PASSWORD }}
 
     steps:
       - uses: actions/checkout@v4
@@ -25,12 +30,12 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: '8.9'
+          gradle-version: '8.11.1'
 
       - name: Pamięć podręczna biblioteki symboli
         uses: actions/cache@v4
         with:
-          path: app/src/main/assets/symbols
+          path: app/generated-assets
           key: symbols-${{ hashFiles('tools/fetch_symbols.py') }}
 
       - name: Odtwórz keystore (jeśli ustawiony w Secrets)
@@ -39,18 +44,84 @@ jobs:
           echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
           echo "SIGNING_KEYSTORE_PATH=$RUNNER_TEMP/release.jks" >> "$GITHUB_ENV"
 
-      - name: Budowanie
-        run: gradle assembleRelease --stacktrace
+      - name: Budowanie APK
+        run: gradle :app:assembleRelease --stacktrace
 
       - name: Sprawdź, czy biblioteka symboli jest w APK
         run: |
           APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
           N=$(unzip -l "$APK" | grep -c 'assets/symbols/[mo]/' || true)
           echo "Symboli w APK: $N"
-          ls -la "$APK"
           test "$N" -gt 5000
+
+      - name: Zaszyfruj APK hasłem (AES-256)
+        run: |
+          if [ -z "$DIST_PASSWORD" ]; then
+            echo "::error::Brak sekretu DIST_PASSWORD – nie zaszyfruję paczki. Dodaj go w Settings → Secrets → Actions."
+            exit 1
+          fi
+          which 7z >/dev/null 2>&1 || (sudo apt-get update -q && sudo apt-get install -y -q p7zip-full)
+          APK=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          mkdir -p dist
+          cp "$APK" "dist/Gwarek.apk"
+          # -mhe=on szyfruje też nazwy plików; -p ustawia hasło
+          7z a -t7z -mx=9 -mhe=on -p"$DIST_PASSWORD" dist/gwarek-apk-zaszyfrowane.7z ./dist/Gwarek.apk >/dev/null
+          rm -f dist/Gwarek.apk
+          echo "Gotowe: dist/gwarek-apk-zaszyfrowane.7z"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: gwarek-apk
-          path: app/build/outputs/apk/release/*.apk
+          name: gwarek-apk-zaszyfrowane
+          path: dist/gwarek-apk-zaszyfrowane.7z
+
+  windows:
+    name: Windows (MSI)
+    runs-on: windows-latest
+    env:
+      DIST_PASSWORD: ${{ secrets.DIST_PASSWORD }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Pamięć podręczna biblioteki symboli
+        uses: actions/cache@v4
+        with:
+          path: app/generated-assets
+          key: symbols-${{ hashFiles('tools/fetch_symbols.py') }}
+
+      - name: Biblioteka symboli
+        shell: bash
+        run: |
+          if [ ! -f app/generated-assets/common/symbols/index.tsv ]; then python tools/fetch_symbols.py; fi
+
+      - name: Budowanie instalatora
+        run: gradle :app:packageMsi --stacktrace
+
+      - name: Zaszyfruj MSI hasłem (AES-256)
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrEmpty($env:DIST_PASSWORD)) {
+            Write-Host "::error::Brak sekretu DIST_PASSWORD – nie zaszyfruję paczki. Dodaj go w Settings → Secrets → Actions."
+            exit 1
+          }
+          $msi = Get-ChildItem app/build/compose/binaries/main/msi/*.msi | Select-Object -First 1
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item $msi.FullName dist/Gwarek.msi
+          $7z = "C:\Program Files\7-Zip\7z.exe"
+          & $7z a -t7z -mx=9 -mhe=on "-p$env:DIST_PASSWORD" dist/gwarek-windows-zaszyfrowane.7z ./dist/Gwarek.msi | Out-Null
+          Remove-Item dist/Gwarek.msi
+          Write-Host "Gotowe: dist/gwarek-windows-zaszyfrowane.7z"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gwarek-windows-zaszyfrowane
+          path: dist/gwarek-windows-zaszyfrowane.7z
