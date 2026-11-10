@@ -36,7 +36,7 @@ CLDR_PL = f"{CLDR_BASE}/cldr-annotations-full/annotations/pl/annotations.json"
 CLDR_PL_DERIVED = f"{CLDR_BASE}/cldr-annotations-derived-full/annotationsDerived/pl/annotations.json"
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, "app", "src", "main", "assets", "symbols")
+OUT = os.path.join(ROOT, "app", "generated-assets", "common", "symbols")
 
 
 def fetch(url: str) -> bytes:

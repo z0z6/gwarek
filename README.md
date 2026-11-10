@@ -1,6 +1,6 @@
 # Gwarek
 
-Otwartoźródłowy komunikator AAC (komunikacja wspomagająca i alternatywna) na Androida, projektowany przede wszystkim pod tablety. Działa w pełni offline.
+Otwartoźródłowy komunikator AAC (komunikacja wspomagająca i alternatywna) na Androida i Windowsa, projektowany pod tablety i komputery. Działa w pełni offline.
 
 ## Stan: etap 5 (plan ukończony)
 
@@ -28,17 +28,27 @@ Otwartoźródłowy komunikator AAC (komunikacja wspomagająca i alternatywna) na
 4. ✅ Lokalne agenty AI: przewidywanie kolejnego słowa, odmiana zdań po polsku, generowanie tablic tematycznych
 5. ✅ Kopie zapasowe, import/eksport (Open Board Format), blokada, dostępność
 
+## Windows (w przygotowaniu)
+
+Projekt jest wieloplatformowy (Kotlin + Compose Multiplatform). Wspólny kod jest w `app/src/jvmShared`, część tylko dla Androida w `app/src/androidMain`, a dla Windowsa w `app/src/desktopMain`.
+
+Na Windowsie działają już: tablice, mowa (wbudowany syntezator SAPI z polskim głosem), biblioteka symboli, edycja, podpowiedzi, kopie zapasowe, Open Board Format, PIN i tryb pełnoekranowy (F11). Kreator piktogramów, druk i asystent AI dojdą w kolejnym etapie.
+
+Polski głos na Windowsie: Ustawienia → Czas i język → Mowa → Dodaj głosy → Polski. Dane aplikacji są w `%APPDATA%\Gwarek`.
+
+Lokalne uruchomienie wersji na komputer: `gradle :app:run`. Instalator: `gradle :app:packageMsi` (na Windowsie).
+
 ## Budowanie
 
-GitHub Actions buduje APK przy każdym pushu do `main` (zakładka **Actions → ostatni przebieg → Artifacts → gwarek-apk**).
+GitHub Actions przy każdym pushu do `main` buduje APK (artefakt **gwarek-apk**) i instalator Windows (artefakt **gwarek-windows-msi**). Znajdziesz je w zakładce Actions → ostatni przebieg → Artifacts.
 
 Lokalnie (JDK 17, Android SDK, Gradle 8.9, Python 3):
 
 ```
-gradle assembleRelease
+gradle :app:assembleRelease
 ```
 
-Przy pierwszym buildzie Gradle uruchamia `tools/fetch_symbols.py`, który pobiera zestawy symboli (przypięte wersje) do `app/src/main/assets/symbols/`. Ten katalog nie trafia do repo. Aby pobrać go od nowa, usuń katalog.
+Przy pierwszym buildzie Gradle uruchamia `tools/fetch_symbols.py`, który pobiera zestawy symboli (przypięte wersje) do `app/generated-assets/common/symbols/`. Ten katalog nie trafia do repo. Aby pobrać go od nowa, usuń katalog.
 
 Jeśli wolisz wrapper: `gradle wrapper --gradle-version 8.9`, a potem `./gradlew assembleRelease`.
 
