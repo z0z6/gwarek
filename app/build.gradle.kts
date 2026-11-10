@@ -9,7 +9,7 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
-val appVersion = "0.6.0"
+val appVersion = "0.6.1"
 
 /*
  * Układ źródeł:
@@ -81,7 +81,7 @@ android {
         applicationId = "org.gwarek.aac"
         minSdk = 26
         targetSdk = 34
-        versionCode = 7
+        versionCode = 8
         versionName = appVersion
 
         // Lokalny model AI (llama.cpp) budujemy tylko dla 64-bitowego ARM – to praktycznie wszystkie tablety.
@@ -103,8 +103,18 @@ android {
         }
     }
 
-    // Biblioteka symboli generowana przez tools/fetch_symbols.py
-    sourceSets["main"].assets.srcDir("generated-assets/common")
+    // Cały Android korzysta tylko z katalogu androidMain. Jawnie wskazujemy manifest, zasoby
+    // i obrazy, dzięki czemu ewentualny stary katalog src/main (pozostały po poprzednim układzie
+    // projektu) jest całkowicie pomijany i nie powoduje konfliktów "Duplicate resources".
+    sourceSets.getByName("main") {
+        manifest.srcFile("src/androidMain/AndroidManifest.xml")
+        res.setSrcDirs(listOf("src/androidMain/res"))
+        // Biblioteka symboli generowana przez tools/fetch_symbols.py
+        assets.setSrcDirs(listOf("src/androidMain/assets", "generated-assets/common"))
+        // Kod Kotlina Androida kompiluje zestaw źródeł androidMain (konfiguracja kotlin { } wyżej),
+        // więc domyślny src/main/java ma być pusty – inaczej stare pliki dublowałyby klasy.
+        java.setSrcDirs(emptyList<String>())
+    }
 
     signingConfigs {
         create("release") {
