@@ -82,6 +82,38 @@ Silnik: [llama.cpp](https://github.com/ggml-org/llama.cpp) (MIT), przypięty do 
 
 Aplikacja korzysta z systemowego TTS. Jeśli brakuje polskiego głosu, pokaże przycisk instalacji. Po pobraniu głos działa bez internetu.
 
+## Zabezpieczenie paczek hasłem (tymczasowe)
+
+Gotowe pliki APK i MSI są pakowane w zaszyfrowane archiwa `.7z` (AES-256, z ukrytymi nazwami plików). Bez hasła nie da się ich zainstalować ani podejrzeć zawartości.
+
+Ani Android, ani Windows nie pozwalają dołożyć własnego okienka z hasłem do instalatora, więc ochrona działa na poziomie dystrybucji: najpierw odszyfrowujesz archiwum hasłem, dopiero potem instalujesz zwykły plik.
+
+### Konfiguracja
+
+Hasła nie trzymamy w repozytorium. Dodaj je raz jako sekret: **Settings → Secrets and variables → Actions → New repository secret**:
+
+| Secret | Wartość |
+|---|---|
+| `DIST_PASSWORD` | hasło dystrybucji |
+
+Od tej pory CI buduje i wysyła tylko zaszyfrowane artefakty: `gwarek-apk-zaszyfrowane` i `gwarek-windows-zaszyfrowane`. Bez ustawionego sekretu build celowo kończy się błędem, żeby żaden niezaszyfrowany plik nie trafił na zewnątrz.
+
+### Instalacja u odbiorcy
+
+Potrzebny jest darmowy program do 7-Zip (Windows: [7-zip.org](https://www.7-zip.org); Android: np. ZArchiver).
+
+- **Windows:** kliknij archiwum prawym przyciskiem → 7-Zip → Wypakuj, podaj hasło, uruchom `Gwarek.msi`.
+- **Android:** otwórz `.7z` w ZArchiver, podaj hasło, wypakuj `Gwarek.apk`, a następnie zainstaluj (trzeba zezwolić na instalację z nieznanych źródeł).
+
+### Ręcznie (lokalnie)
+
+```
+DIST_PASSWORD='...' tools/encrypt_dist.sh wynik.7z Gwarek.apk
+DIST_PASSWORD='...' tools/decrypt_dist.sh wynik.7z katalog_docelowy
+```
+
+Uwaga: szyfrowanie chroni paczkę w czasie przekazywania. Po odszyfrowaniu i instalacji aplikacja jest na urządzeniu jak każda inna. Kod aplikacji jest dodatkowo skracany i zaciemniany (R8), ale zaszyfrowane archiwum nie zastępuje pełnej ochrony przed inżynierią wsteczną zainstalowanej aplikacji.
+
 ## Licencje
 
 Wszystko jest bezpłatne i wolne, również do zastosowań komercyjnych.
